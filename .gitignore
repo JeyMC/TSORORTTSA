@@ -1,0 +1,5 @@
+user_file/*
+__pycache__/*
+tickets.db
+employee_export.xlsx
+.idea/*

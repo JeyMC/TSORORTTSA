@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta  name="viewport"  content="width=device-width, initial-scale=0.7, viewport-fit=cover" />
+    <meta charset="UTF-8">
+    <title>Заявки</title>
+    <style>
+        body {
+          font-family: Inter, sans-serif;
+          background: #f0f2f5;
+          margin: 0;
+          padding: 20px;
+        }
+        h2 {
+          margin-bottom: 10px;
+        }
+        .filters {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+          margin-bottom: 20px;
+          background: #f0f2f5;
+          position: sticky;
+          top: 0;
+          padding: 10px 0;
+          z-index: 10;
+          align-items: center;
+        }
+        .filters select, .filters input, .filters button {
+          padding: 8px;
+          border-radius: 6px;
+          border: 1px solid #ccc;
+        }
+        #resetFilters {
+          display: none;
+        }
+        .application-card {
+          border: 1px solid #ccc;
+          border-radius: 10px;
+          background: white;
+          padding: 15px;
+          margin-bottom: 10px;
+          transition: 0.2s;
+          cursor: pointer;
+        }
+        .application-card:hover {
+          background: #f9f9f9;
+        }
+        .status-new {
+          border-left: 5px solid gray;
+        }
+        .status-working {
+          border-left: 5px solid orange;
+        }
+        .status-done {
+          border-left: 5px solid green;
+        }
+
+        .toggle-switch {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 8px
+        }
+
+        .switch {
+          position: relative;
+          display: inline-block;
+          width: 50px;
+          height: 24px;
+        }
+
+        .switch input {
+          opacity: 0;
+          width: 0;
+          height: 0;
+        }
+
+        .slider {
+          position: absolute;
+          cursor: pointer;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: #ccc;
+          transition: .4s;
+          border-radius: 24px;
+        }
+
+        .slider:before {
+          position: absolute;
+          content: "";
+          height: 16px;
+          width: 16px;
+          left: 4px;
+          bottom: 4px;
+          background-color: white;
+          transition: .4s;
+          border-radius: 50%;
+        }
+
+        input:checked + .slider {
+          background-color: #4CAF50;
+        }
+
+        input:checked + .slider:before {
+          transform: translateX(26px);
+        }
+
+        .toggle-label {
+          cursor: pointer;
+          font-size: 16px;
+          user-select: none;
+        }
+
+        .application-card {
+          padding: 15px;
+          margin: 10px 0;
+          border: 1px solid #ddd;
+          border-radius: 5px;
+        }
+
+        .status-done {
+          background-color: #e8f5e9;
+          border-left: 4px solid #4CAF50;
+          display: none;
+        }
+
+        .status-new {
+          background-color: #e3f2fd;
+          border-left: 4px solid #2196F3;
+        }
+
+        .status-working {
+          background-color: #fff3e0;
+          border-left: 4px solid #FF9800;
+        }
+    </style>
+</head>
+<body>
+<h2>Заявки</h2>
+<div class="filters">
+    <select id="statusFilter">
+        <option value="">Статус</option>
+        <option value="1">Новая</option>
+        <option value="2">В работе</option>
+        <option value="3">Завершена</option>
+    </select>
+    <select id="priorityFilter">
+        <option value="">Приоритет</option>
+        <option value="1">Низкий</option>
+        <option value="2">Средний</option>
+        <option value="3">Высокий</option>
+    </select>
+    <select id="cabinetFilter">
+        <option value="">Все кабинеты</option>
+    </select>
+    <input type="text" id="searchTitle" placeholder="Название заявки">
+    <input type="date" id="dateFrom">
+    <input type="date" id="dateTo">
+    <div class="toggle-switch">
+        <label class="switch">
+            <input type="checkbox" id="toggleDone">
+            <span class="slider"></span>
+        </label>
+        <label for="toggleDone" class="toggle-label">Выполненные</label>
+    </div>
+    <button id="resetFilters">Сбросить фильтры</button>
+    <div style="margin-left: auto; display: flex; gap: 10px;">
+        <button id="employeeBtn"
+                style="display:none; padding: 8px 12px; background-color: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer;">
+            Сотрудники
+        </button>
+        <button id="createBtn"
+                style="display:inline-block; padding: 8px 12px; background-color: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer;">
+            Подать заявку
+        </button>
+        <button id="logout"
+                style="padding: 8px 12px; background-color: #cc4e5c; color: white; border: none; border-radius: 6px; cursor: pointer; ">
+            Выход
+        </button>
+    </div>
+</div>
+
+<div id="applications"></div>
+
+<script>
+    let allApplications = [];
+
+    window.onload = async function () {
+      const res = await fetch('/applications?user_id=' + localStorage.getItem("user_id") + '&admin=' + localStorage.getItem("is_admin"));
+      const data = await res.json();
+      allApplications = data;
+      populateCabinets(data);
+      renderApplications(data);
+
+      document.getElementById("cabinetFilter").addEventListener("change", applyFilters);
+      document.getElementById("statusFilter").addEventListener("change", applyFilters);
+      document.getElementById("priorityFilter").addEventListener("change", applyFilters);
+      document.getElementById("searchTitle").addEventListener("input", applyFilters);
+      document.getElementById("dateFrom").addEventListener("change", applyFilters);
+      document.getElementById("dateTo").addEventListener("change", applyFilters);
+    }
+
+    function populateCabinets(data) {
+      const cabinetSet = new Set(data.map(app => app.cabinet_number));
+      const cabinetSelect = document.getElementById("cabinetFilter");
+      cabinetSet.forEach(cab => {
+        const option = document.createElement("option");
+        option.value = cab;
+        option.textContent = cab;
+        cabinetSelect.appendChild(option);
+      });
+    }
+
+    function applyFilters() {
+      const status = document.getElementById("statusFilter").value;
+      const priority = document.getElementById("priorityFilter").value;
+      const cabinet = document.getElementById("cabinetFilter").value;
+      const title = document.getElementById("searchTitle").value.toLowerCase();
+      const dateFrom = document.getElementById("dateFrom").value;
+      const dateTo = document.getElementById("dateTo").value;
+
+     const filtered = allApplications.filter(app => {
+      const [day, month, year] = app.date_submission.split(".");
+      const appDate = new Date(`${year}-${month}-${day}`);
+
+        return (
+            (!status || app.id_status == status) &&
+            (!priority || app.id_priority == priority) &&
+            (!cabinet || app.cabinet_number == cabinet) &&
+            (!title || app.title.toLowerCase().includes(title.toLowerCase())) &&
+            (!dateFrom || appDate >= new Date(dateFrom)) &&
+            (!dateTo || appDate <= new Date(dateTo))
+        );
+      });
+      document.getElementById("resetFilters").style.display = "block";
+      renderApplications(filtered);
+    }
+
+    function renderApplications(apps) {
+      const container = document.getElementById("applications");
+      container.innerHTML = "";
+      apps.forEach(app => {
+        const div = document.createElement("div");
+        div.className = `application-card status-${app.id_status === 1 ? 'new' : app.id_status === 2 ? 'working' : 'done'}`;
+        div.onclick = () => {
+          window.location.href = `application_view.html?id=${app.id}&admin=${localStorage.getItem("is_admin")}`;
+        };
+        div.innerHTML = `<b>${app.title}</b><br>Кабинет: ${app.cabinet_number} | Приоритет: ${['Низкий','Средний','Высокий'][app.id_priority-1]} | Статус: ${['Новая','В работе','Завершена'][app.id_status-1]}<br><small>Дата: ${app.date_submission}</small>`;
+        container.appendChild(div);
+      });
+    }
+
+    document.getElementById("resetFilters").addEventListener("click", () => {
+      document.getElementById("statusFilter").value = "";
+      document.getElementById("priorityFilter").value = "";
+      document.getElementById("cabinetFilter").value = "";
+      document.getElementById("searchTitle").value = "";
+      document.getElementById("dateFrom").value = "";
+      document.getElementById("dateTo").value = "";
+      renderApplications(allApplications);
+      document.getElementById("resetFilters").style.display = "none";
+    });
+
+    document.getElementById("employeeBtn").onclick = () => location.href = "manage_staff.html";
+    document.getElementById("createBtn").onclick = () => location.href = "submitting_application.html";
+    document.getElementById("logout").onclick = () => location.href = "login.html";
+
+
+    if (localStorage.getItem("is_admin") === "true") {
+        document.getElementById("employeeBtn").style.display = "inline-block";
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+    const toggleDone = document.getElementById('toggleDone');
+    const applicationsContainer = document.getElementById('applications');
+
+    function toggleDoneCards() {
+    const doneCards = applicationsContainer.querySelectorAll('.application-card.status-done');
+
+    doneCards.forEach(card => {
+        card.style.display = toggleDone.checked ? 'block' : 'none';
+    });
+      }
+
+      if (toggleDone) {
+        toggleDone.checked = false;
+
+        toggleDoneCards();
+
+        toggleDone.addEventListener('change', toggleDoneCards);
+      }
+    });
+
+</script>
+</body>
+</html>

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta  name="viewport"  content="width=device-width, initial-scale=0.7, viewport-fit=cover" />
+    <meta charset="UTF-8">
+    <title>Создание заявки</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .modal {
+            background: #fff;
+            border-radius: 10px;
+            padding: 30px;
+            width: 600px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            position: relative;
+        }
+        .modal h2 {
+            margin-top: 0;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        input, textarea {
+            min-width: 94%;
+            max-width: 94%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+        }
+        .priority-buttons button {
+            margin-right: 10px;
+            padding: 10px 16px;
+            border: 1px solid #aaa;
+            border-radius: 6px;
+            background: #f4f4f4;
+            cursor: pointer;
+        }
+        .priority-buttons button.selected {
+            background-color: #28a745;
+            color: white;
+        }
+        .submit-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 24px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+<div class="modal">
+    <span class="close" onclick="window.location.href='main_view.html'">&times;</span>
+    <h2>Заявка системному администратору</h2>
+    <div class="form-group">
+        <label>Название проблемы*</label>
+        <input type="text" id="title" required>
+    </div>
+    <div class="form-group">
+        <label>Кабинет*</label>
+        <input type="text" id="cabinet" required>
+    </div>
+    <div class="form-group">
+        <label>Описание проблемы</label>
+        <textarea id="description" rows="3" style="min-height: 20px; max-height: 400px"></textarea>
+    </div>
+    <div class="form-group">
+        <label>Уровень приоритета</label>
+        <div class="priority-buttons" style="margin-top: 10px;">
+            <button onclick="selectPriority(1)">Низкий</button>
+            <button onclick="selectPriority(2)">Средний</button>
+            <button onclick="selectPriority(3)">Высокий</button>
+        </div>
+    </div>
+    <div id="create-error" style="color: red; margin-bottom: 10px;"></div>
+    <button class="submit-btn" onclick="submitForm()">Создать заявку</button>
+</div>
+<script>
+    let selectedPriority = 1;
+    function selectPriority(level) {
+        selectedPriority = level;
+        document.querySelectorAll('.priority-buttons button').forEach(btn => btn.classList.remove('selected'));
+        document.querySelectorAll('.priority-buttons button')[level - 1].classList.add('selected');
+    }
+
+    function submitForm() {
+        const title = document.getElementById('title').value;
+        const cabinet = document.getElementById('cabinet').value;
+        const description = document.getElementById('description').value;
+        const id_employee = localStorage.getItem("user_id");
+
+        const errorDiv = document.getElementById("create-error");
+        errorDiv.textContent = "";
+
+        if (!title) {
+            errorDiv.textContent = "Введите Название";
+            return;
+        } else if (!cabinet) {
+            errorDiv.textContent = "Введите Кабинет";
+            return;
+        }
+
+        fetch('/applications', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title: title,
+                cabinet_number: cabinet,
+                problem_description: description,
+                id_priority: selectedPriority,
+                id_employee: parseInt(id_employee)
+            })
+        }).then(res => res.json()).then(data => {
+            alert('Заявка успешно создана!');
+            window.location.href = 'main_view.html';
+        });
+    }
+</script>
+</body>
+</html>

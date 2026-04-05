@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta  name="viewport"  content="width=device-width, initial-scale=0.55, viewport-fit=cover" />
+    <meta charset="UTF-8">
+    <title>Управление сотрудниками</title>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            padding: 40px;
+        }
+        .container {
+            max-width: 900px;
+            margin: auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        input[id="edit-name"], input[id="edit-pass"], [id="search"] , input[id="create-name"], input[id="pass"]{
+            width: 94%;
+            padding: 10px;
+            margin: 10px 0 20px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+        input[id="search"]{
+            width: 97%;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        button {
+            padding: 8px 14px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .back {
+            margin-bottom: 20px;
+            background-color: #6c757d;
+        }
+        .modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: none;
+            width: 400px;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+            display: none;
+        }
+
+        .toggle-switch {
+          position: absolute;
+          right: 45px;
+          top: 18px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 8px;
+        }
+
+        .switch {
+          position: relative;
+          display: inline-block;
+          width: 40px;
+          height: 18px;
+        }
+
+        .switch input {
+          opacity: 0;
+          width: 0;
+          height: 0;
+        }
+
+        .slider {
+          position: absolute;
+          cursor: pointer;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: #ccc;
+          transition: .4s;
+          border-radius: 24px;
+        }
+
+        .slider:before {
+          position: absolute;
+          content: "";
+          height: 12px;
+          width: 12px;
+          left: 4px;
+          bottom: 3px;
+          background-color: white;
+          transition: .4s;
+          border-radius: 50%;
+        }
+
+        input:checked + .slider {
+          background-color: #4CAF50;
+        }
+
+        input:checked + .slider:before {
+          transform: translateX(20px);
+        }
+    </style>
+</head>
+<body>
+<div class="overlay" id="overlay"></div>
+<div class="modal" id="edit-modal">
+    <h3 style="margin-block-start:4px">Редактирование</h3>
+    <button onclick="closeModalWithConfirm()"
+            style="position:absolute; top:18px; right:10px; background:none; border:none; cursor:pointer;"
+            aria-label="Закрыть">
+        <svg xmlns="http://www.w3.org/2000/svg" width="17.828" height="17.828" viewBox="0 0 17.828 17.828">
+            <polygon
+                    points="2.828 17.828 8.914 11.742 15 17.828 17.828 15 11.742 8.914 17.828 2.828 15 0 8.914 6.086 2.828 0 0 2.828 6.085 8.914 0 15 2.828 17.828"/>
+        </svg>
+    </button>
+    <input type="text" id="edit-name" placeholder="ФИО" required>
+    <input type="password" id="edit-pass" placeholder="Новый пароль">
+    <div id="error-message" style="color: red; margin-bottom: 10px;"></div>
+    <div class="toggle-switch">
+        <label for="toggleDone" class="toggle-label">Админ</label>
+        <label class="switch">
+            <input type="checkbox" id="toggleDone">
+            <span class="slider"></span>
+        </label>
+    </div>
+    <button onclick="submitEdit()">Сохранить</button>
+</div>
+<div class="modal" id="create-modal">
+    <h3 style="margin-block-start:4px">Добавить</h3>
+    <button onclick="closeModalWithConfirm()"
+            style="position:absolute; top:18px; right:10px; background:none; border:none; cursor:pointer;"
+            aria-label="Закрыть">
+        <svg xmlns="http://www.w3.org/2000/svg" width="17.828" height="17.828" viewBox="0 0 17.828 17.828">
+            <polygon
+                    points="2.828 17.828 8.914 11.742 15 17.828 17.828 15 11.742 8.914 17.828 2.828 15 0 8.914 6.086 2.828 0 0 2.828 6.085 8.914 0 15 2.828 17.828"/>
+        </svg>
+    </button>
+    <!-- Админ -->
+    <div class="toggle-switch">
+        <label for="create-admin" class="toggle-label">Админ</label>
+        <label class="switch">
+            <input type="checkbox" id="create-admin">
+            <span class="slider"></span>
+        </label>
+    </div>
+    <input type="text" id="create-name" placeholder="ФИО" required style="margin: 10px 0 10px">
+    <!-- Авто пароль -->
+    <div class="toggle-switch" style="position: static">
+        <label for="create-auto-pass" class="toggle-label">Сгенерировать пароль</label>
+        <label class="switch">
+            <input type="checkbox" id="create-auto-pass">
+            <span class="slider"></span>
+        </label>
+    </div>
+    <input type="password" id="pass" placeholder="Пароль">
+
+    <div id="create-error" style="color: red; margin-bottom: 10px;"></div>
+    <button onclick="submitCreate()">Создать</button>
+</div>
+<div class="container">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; margin-right: 5px">
+        <button style="margin-bottom:0px" class="back" onclick="window.location.href='main_view.html'">Назад</button>
+        <h2 style="margin: 0 auto; text-align: center;">Сотрудники</h2>
+        <button onclick="openCreateModal()" style="background-color: #28a745; margin-right: 12px">Добавить</button>
+        <button onclick="document.getElementById('excel-upload').click()" style="background-color: #28a745">Загрузить из
+            Excel
+        </button>
+    <input type="file" id="excel-upload" style="display: none" accept=".xlsx" onchange="uploadExcel(event)">
+    </div>
+    <input type="text" id="search" placeholder="Поиск по ФИО..." oninput="filterStaff()">
+    <table>
+        <thead>
+        <tr>
+            <th>ФИО</th>
+            <th>Логин</th>
+            <th>Админ</th>
+            <th>Действия</th>
+        </tr>
+        </thead>
+        <tbody id="employee-body"></tbody>
+    </table>
+</div>
+
+<script>
+    let allStaff = [];
+    let editingId = null;
+    const errorDiv = document.getElementById("error-message");
+
+    fetch("/staff")
+        .then(res => res.json())
+        .then(data => {
+            allStaff = data;
+            renderStaff(data);
+        });
+
+    function renderStaff(list) {
+        const body = document.getElementById("employee-body");
+        body.innerHTML = "";
+        list.forEach(t => {
+            body.innerHTML += `
+                <tr>
+                    <td>${t.full_name}</td>
+                    <td>${t.login}</td>
+                    <td>${t.check_admin ? '✔️' : ''}</td>
+                    <td style="display: flex; align-items: center;"><button onclick="openEdit(${t.id}, '${t.full_name}',${t.check_admin ? 1 : 0})">Редактировать</button>
+                    <button onclick="deleteEmployee(${t.id},'${t.login}')" style="background-color: transparent; padding: 4px 0px 4px 10px"><svg width="24px" height="24px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M10 12L14 16M14 12L10 16M4 6H20M16 6L15.7294 5.18807C15.4671 4.40125 15.3359 4.00784 15.0927 3.71698C14.8779 3.46013 14.6021 3.26132 14.2905 3.13878C13.9376 3 13.523 3 12.6936 3H11.3064C10.477 3 10.0624 3 9.70951 3.13878C9.39792 3.26132 9.12208 3.46013 8.90729 3.71698C8.66405 4.00784 8.53292 4.40125 8.27064 5.18807L8 6M18 6V16.2C18 17.8802 18 18.7202 17.673 19.362C17.3854 19.9265 16.9265 20.3854 16.362 20.673C15.7202 21 14.8802 21 13.2 21H10.8C9.11984 21 8.27976 21 7.63803 20.673C7.07354 20.3854 6.6146 19.9265 6.32698 19.362C6 18.7202 6 17.8802 6 16.2V6" stroke="#cc4e5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg></button>
+                    </td>
+            `;
+        });
+    }
+    function filterStaff() {
+        const query = document.getElementById("search").value.toLowerCase();
+        const filtered = allStaff.filter(t => t.full_name.toLowerCase().includes(query));
+        renderStaff(filtered);
+    }
+
+    function openCreateModal() {
+        document.getElementById("overlay").style.display = "block";
+        document.getElementById("create-modal").style.display = "block";
+        document.getElementById("create-auto-pass").checked = 1;
+        document.getElementById("pass").style.display = "none";
+    }
+
+    document.getElementById("create-auto-pass").addEventListener("change", function() {
+    const passInput = document.getElementById("pass");
+
+    if (this.checked) {
+        passInput.style.display = "none";
+    } else {
+        passInput.style.display = "block";
+    }
+    });
+
+    function submitCreate() {
+    const fullName = document.getElementById("create-name").value;
+    const isAdmin = document.getElementById("create-admin").checked;
+    const autoPassword = document.getElementById("create-auto-pass").checked;
+    let password = document.getElementById("pass").value;
+
+    const errorDiv = document.getElementById("create-error");
+    errorDiv.textContent = "";
+
+    if (!fullName) {
+        errorDiv.textContent = "Введите ФИО";
+        return;
+    }
+    if (autoPassword == true) {
+        password = "null";
+    } else if (password.length < 6){
+        errorDiv.textContent = "Пароль должен содержать не менее 6 символов";
+        return;
+    }
+
+    let url = `/create_employee/?full_name=${encodeURIComponent(fullName)}&auto_password=${autoPassword}&password=${encodeURIComponent(password)}&admin=${isAdmin}`;
+
+    fetch(url, {
+        method: "POST"
+    })
+    .then(res => res.json())
+    .then(() => {
+        alert("Сотрудник создан");
+        location.reload();
+    });
+    }
+
+    function openEdit(id, name, check_admin) {
+        errorDiv.textContent = "";
+        editingId = id;
+        document.getElementById("edit-name").value = name;
+        document.getElementById("edit-pass").value = "";
+        document.getElementById("toggleDone").checked = check_admin ? 1 : 0;
+        document.getElementById("overlay").style.display = "block";
+        document.getElementById("edit-modal").style.display = "block";
+    }
+
+
+    function deleteEmployee(id, login) {
+        let deleteEmp = prompt("Вы уверены, что хотите удалить аккаунт?\n\nЕсли да - введите логин пользователя.", "Логин");
+        console.log(deleteEmp);
+        if (deleteEmp == null) {
+            return;
+        }
+    }
+
+    function submitEdit() {
+        const fullName = document.getElementById("edit-name").value;
+        const password = document.getElementById("edit-pass").value;
+        const isAdmin = document.getElementById("toggleDone").checked;
+        console.log(password);
+
+        if (!fullName && !password) {
+            errorDiv.textContent = "Введите ФИО и новый пароль";
+            return;
+            }
+        errorDiv.textContent = "";
+        fetch(`/staff/${editingId}?full_name=${encodeURIComponent(fullName)}&password=${encodeURIComponent(password)}&admin=${isAdmin}`, {
+            method: "PUT"
+        }).then(res => res.json())
+          .then(() => {
+              alert("Данные обновлены");
+              location.reload();
+          });
+    }
+
+    document.getElementById("create-auto-pass").addEventListener("change", function() {
+    const passInput = document.getElementById("create-pass");
+    document.getElementById("pass").value = "";
+    document.getElementById("create-error").textContent = "";
+
+    if (this.checked) {
+        passInput.style.display = "none";
+    } else {
+        passInput.style.display = "block";
+    }
+    });
+
+    function uploadExcel(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const allowedTypes = [
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+        alert("Пожалуйста, выберите файл Excel (.xlsx)");
+        event.target.value = '';
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    fetch("/upload_excel", {
+        method: "POST",
+        body: formData
+    })
+    .then(async res => {
+        if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.detail || "Ошибка загрузки файла");
+        }
+        const blob = await res.blob();
+
+        if (res.headers.get("X-Staff-Updated") === "true") {
+            fetch("/staff")
+                .then(res => res.json())
+                .then(data => {
+                    allStaff = data;
+                    renderStaff(data);
+                });
+        }
+
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "Сотрудники_с_логинами.xlsx";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    })
+    .catch((error) => {
+        // Показываем конкретное сообщение об ошибке
+        alert(error.message || "Ошибка загрузки файла");
+        event.target.value = ''; // Очищаем поле
+    });
+    }
+
+    function closeModalWithConfirm() {
+        if (confirm("Вы уверены, что хотите закрыть окно? Данные не будут сохранены.")) {
+            document.getElementById("overlay").style.display = "none";
+            document.getElementById("edit-modal").style.display = "none";
+            document.getElementById("create-modal").style.display = "none";
+
+            errorDiv.textContent = "";
+        }
+    }
+
+    document.getElementById("overlay").addEventListener("click", closeModalWithConfirm);
+</script>
+</body>
+</html>
