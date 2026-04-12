@@ -9,12 +9,14 @@ import uvicorn
 import openpyxl
 import random
 import string
+from os import remove as delete_files_user
+from os.path import isfile
 
 from database import Base, engine, SessionLocal
 from models import Employee, Application, PriorityApplication, ApplicationStatus
 from schemas import ApplicationCreate, ApplicationOut, StatusUpdate
 from utils import hash_password, generate_login
-from service import generate_docx, add_employee
+from service import generate_docx, add_employee, archive_employee, update_employee
 
 app = FastAPI()
 
@@ -51,48 +53,62 @@ def logout():
 
 @app.post("/auth")
 def login(login: str, password: str, db: Session = Depends(get_db)):
-    user = db.query(Employee).filter(Employee.login == login).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="Сотрудник не найден")
-    if hash_password(password) != user.hashed_password:
-        raise HTTPException(status_code=401, detail="Неверный пароль")
+    users = db.query(Employee).filter(Employee.login == login).all()
+    if not users:
+        raise HTTPException(status_code=404, detail="Сотрудник не найден!")
+    for user in users:
+        if hash_password(password) == user.hashed_password:
+            if user.is_archived == 1:
+                raise HTTPException(status_code=403, detail="Пользователь в архиве!")
+            return {
+                "user_id": user.id,
+                "full_name": user.full_name,
+                "is_admin": user.check_admin
+            }
+    raise HTTPException(status_code=401, detail="Неверный логин или пароль!")
 
-    return {
-        "user_id": user.id,
-        "full_name": user.full_name,
-        "is_admin": user.check_admin
-    }
+
+@app.post("/create_employee")
+def create_employee(full_name: str, auto_password: bool, password: str, admin: bool, db: Session = Depends(get_db)):
+    if auto_password:
+        symbol_pass = string.digits + string.ascii_letters
+        password = ''.join(random.choice(symbol_pass) for _ in range(10))
+    status = add_employee(db, full_name, password, admin)
+    if status == "done":
+        return {"message": "Сотрудник добавлен!"}
+    else:
+        return {"message": "Что-то пошло не так!"}
 
 
 @app.get("/staff")
 def get_staff(db: Session = Depends(get_db)):
-    return db.query(Employee).order_by(Employee.full_name).all()
+    return db.query(Employee).order_by(Employee.is_archived, Employee.full_name).all()
 
 
 @app.put("/staff/{employee_id}")
 def update_staff(employee_id: int, full_name: str, password: str, admin: bool, db: Session = Depends(get_db)):
-    print(f"{employee_id}, {full_name}, {password}, {admin}")
     employee = db.query(Employee).filter(Employee.id == employee_id).first()
     if not employee:
-        raise HTTPException(status_code=404, detail="Сотрудник не найден")
-    employee.full_name = full_name
-    employee.login = generate_login(full_name)
-    if password != '':
-        print('da pomenyal')
-        employee.hashed_password = hash_password(password)
-    employee.check_admin = admin
-    db.commit()
-    return {"message": "Данные обновлены"}
+        return {"message": "Сотрудник не найден."}
+    status = update_employee(db, employee_id, full_name, password, admin)
+    if status == "done":
+        return {"message": "Данные обновлены!"}
+    else:
+        return {"message": "Что-то пошло не так!"}
 
 
-@app.post("/create_employee")
-def create_employee(full_name: str, auto_password: bool, password: str, admin: bool,  db: Session = Depends(get_db)):
-    if auto_password:
-        symbol_pass = string.digits + string.ascii_letters
-        password = ''.join(random.choice(symbol_pass) for _ in range(10))
-
-    add_employee(db, full_name, password, admin)
-    return {"message": "done"}
+@app.patch("/staff/archive/{employee_id}")
+def archive_staff(employee_id, db: Session = Depends(get_db)):
+    status = archive_employee(db, employee_id)
+    if status == "done_archive":
+        return {"message": "Сотрудник помещён в архив!"}
+    elif status == "done_unarchive":
+        return {"message": "Сотрудник востановлен!"}
+    elif status == "is_admin":
+        return {"message": ("Администратора нельзя архивировать.\n\nЧтобы архивировать, сначала снимите с него статус "
+                            "администратора.")}
+    else:
+        raise HTTPException(status_code=500, detail="Ошибка при архивации")
 
 
 @app.post("/applications")
@@ -115,7 +131,6 @@ def create_application(data: ApplicationCreate, db: Session = Depends(get_db)):
 
 @app.get("/applications", response_model=list[ApplicationOut])
 def get_applications(user_id: int, admin: bool, db: Session = Depends(get_db)):
-    # print(func.substr(Application.date_submission, 4, 2))
     if admin:
         query_data_status2 = db.query(Application).where(Application.id_status == 2).order_by(
             desc(Application.id_status),
@@ -150,6 +165,9 @@ def get_application_by_id(app_id: int, db: Session = Depends(get_db)):
     data_query = db.query(Application).filter(Application.id == app_id).first()
     if not data_query:
         raise HTTPException(status_code=404, detail="Заявка не найдена")
+    file_path = f"user_file/generated_application_{data_query.title}.docx"
+    if isfile(file_path):
+        delete_files_user(file_path)
     return data_query
 
 
@@ -175,9 +193,8 @@ def export_docx(id: int, db: Session = Depends(get_db)):
                                 name_priority.name,
                                 name_status.name,
                                 id_application=data_query.id,
-                                date_submission=datetime.strptime(data_query.date_submission, "%d.%m.%Y"),
-                                date_completion=datetime.strptime(data_query.date_completion,
-                                                                  "%d.%m.%Y") if data_query.date_completion != "" else "",
+                                date_submission=data_query.date_submission,
+                                date_completion=data_query.date_completion if data_query.date_completion != "" else "",
                                 cabinet_number=data_query.cabinet_number,
                                 title=data_query.title,
                                 problem_description=data_query.problem_description)
@@ -209,14 +226,14 @@ def upload_excel(file: UploadFile = File(...), db: Session = Depends(get_db)):
         if not full_name:
             continue
 
-        existing = db.query(Employee).filter(Employee.full_name == full_name).first()
-        if existing:
-            continue
-
         user_login = generate_login(full_name)
 
         symbol_pass = string.digits + string.ascii_letters
         password = ''.join(random.choice(symbol_pass) for _ in range(10))
+
+        count = len(db.query(Employee).filter(Employee.login.like(str(f"{user_login}%"))).all())
+        if count > 0:
+            user_login += str(count)
 
         employee = Employee(
             full_name=full_name,

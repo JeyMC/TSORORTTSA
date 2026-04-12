@@ -50,25 +50,35 @@
     </style>
 </head>
 <body>
-<div class="login-box">
+<form class="login-box" id="login-form">
     <h2>Вход в систему</h2>
     <div id="error" class="error"></div>
     <input type="text" id="login" placeholder="Логин">
     <input type="password" id="password" placeholder="Пароль">
-    <button class="login-btn" onclick="handleLogin()">Войти</button>
-</div>
+    <button class="login-btn" onclick="submit">Войти</button>
+</form>
 
 <script>
+    document.getElementById("login-form").addEventListener("submit", function(e) {
+        e.preventDefault();
+        handleLogin();
+    });
+
     function handleLogin() {
         const login = document.getElementById("login").value;
         const password = document.getElementById("password").value;
         const errorBox = document.getElementById("error");
+        errorBox.textContent = "";
 
         fetch("/auth?login=" + login + "&password=" + password, {
             method: "POST"
         })
         .then(response => {
-            if (!response.ok) throw new Error("Неверный логин или пароль");
+            if (!response.ok) {
+                return response.json().then(err => {
+                    throw new Error(err.detail);
+                });
+            }
             return response.json();
         })
         .then(data => {

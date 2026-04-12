@@ -9,6 +9,7 @@ class Employee(Base):
     login = Column(String(50), unique=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
     check_admin = Column(Boolean, default=False)
+    is_archived = Column(Boolean, default=False)
 
 
 class ApplicationStatus(Base):

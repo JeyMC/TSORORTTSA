@@ -225,15 +225,25 @@
         const body = document.getElementById("employee-body");
         body.innerHTML = "";
         list.forEach(t => {
+            const archiveIcon = t.is_archived ?
+                            `<svg width="24px" height="24px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M2 5C2 4.05719 2 3.58579 2.29289 3.29289C2.58579 3 3.05719 3 4 3H20C20.9428 3 21.4142 3 21.7071 3.29289C22 3.58579 22 4.05719 22 5C22 5.94281 22 6.41421 21.7071 6.70711C21.4142 7 20.9428 7 20 7H4C3.05719 7 2.58579 7 2.29289 6.70711C2 6.41421 2 5.94281 2 5Z" fill="#1C274C"/>
+                            <path d="M20.0689 8.49993C20.2101 8.49999 20.3551 8.50005 20.5 8.49805V12.9999C20.5 16.7711 20.5 18.6568 19.3284 19.8283C18.183 20.9737 16.3552 20.9993 12.75 20.9999L12.75 13.9543L14.4425 15.8349C14.7196 16.1428 15.1938 16.1678 15.5017 15.8907C15.8096 15.6136 15.8346 15.1394 15.5575 14.8315L12.5575 11.4982C12.4152 11.3401 12.2126 11.2499 12 11.2499C11.7874 11.2499 11.5848 11.3401 11.4425 11.4982L8.44254 14.8315C8.16544 15.1394 8.1904 15.6136 8.49828 15.8907C8.80617 16.1678 9.28038 16.1428 9.55748 15.8349L11.25 13.9543L11.25 20.9999C7.64485 20.9993 5.81697 20.9737 4.67157 19.8283C3.5 18.6568 3.5 16.7711 3.5 12.9999V8.49805C3.64488 8.50005 3.78999 8.49999 3.93114 8.49993H20.0689Z" fill="#1C274C"/>
+                            </svg>`:
+                            `<svg width="24px" height="24px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M2 5C2 4.05719 2 3.58579 2.29289 3.29289C2.58579 3 3.05719 3 4 3H20C20.9428 3 21.4142 3 21.7071 3.29289C22 3.58579 22 4.05719 22 5C22 5.94281 22 6.41421 21.7071 6.70711C21.4142 7 20.9428 7 20 7H4C3.05719 7 2.58579 7 2.29289 6.70711C2 6.41421 2 5.94281 2 5Z" fill="#1C274C"/>
+                            <path d="M20.0689 8.49993C20.2101 8.49999 20.3551 8.50005 20.5 8.49805V12.9999C20.5 16.7711 20.5 18.6568 19.3284 19.8283C18.1569 20.9999 16.2712 20.9999 12.5 20.9999H11.5C7.72876 20.9999 5.84315 20.9999 4.67157 19.8283C3.5 18.6568 3.5 16.7711 3.5 12.9999V8.49805C3.64488 8.50005 3.78999 8.49999 3.93114 8.49993L11.25 8.49992L11.25 15.0454L9.55748 13.1648C9.28038 12.8569 8.80617 12.832 8.49828 13.1091C8.1904 13.3862 8.16544 13.8604 8.44254 14.1683L11.4425 17.5016C11.5848 17.6596 11.7874 17.7499 12 17.7499C12.2126 17.7499 12.4152 17.6596 12.5575 17.5016L15.5575 14.1683C15.8346 13.8604 15.8096 13.3862 15.5017 13.1091C15.1938 12.832 14.7196 12.8569 14.4425 13.1648L12.75 15.0454L12.75 8.49992L20.0689 8.49993Z" fill="#1C274C"/>
+                            </svg>`
             body.innerHTML += `
-                <tr>
+                <tr style="opacity: ${t.is_archived ? 0.5 : 1}">
                     <td>${t.full_name}</td>
                     <td>${t.login}</td>
                     <td>${t.check_admin ? '✔️' : ''}</td>
                     <td style="display: flex; align-items: center;"><button onclick="openEdit(${t.id}, '${t.full_name}',${t.check_admin ? 1 : 0})">Редактировать</button>
-                    <button onclick="deleteEmployee(${t.id},'${t.login}')" style="background-color: transparent; padding: 4px 0px 4px 10px"><svg width="24px" height="24px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M10 12L14 16M14 12L10 16M4 6H20M16 6L15.7294 5.18807C15.4671 4.40125 15.3359 4.00784 15.0927 3.71698C14.8779 3.46013 14.6021 3.26132 14.2905 3.13878C13.9376 3 13.523 3 12.6936 3H11.3064C10.477 3 10.0624 3 9.70951 3.13878C9.39792 3.26132 9.12208 3.46013 8.90729 3.71698C8.66405 4.00784 8.53292 4.40125 8.27064 5.18807L8 6M18 6V16.2C18 17.8802 18 18.7202 17.673 19.362C17.3854 19.9265 16.9265 20.3854 16.362 20.673C15.7202 21 14.8802 21 13.2 21H10.8C9.11984 21 8.27976 21 7.63803 20.673C7.07354 20.3854 6.6146 19.9265 6.32698 19.362C6 18.7202 6 17.8802 6 16.2V6" stroke="#cc4e5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-</svg></button>
+
+                    <button title="${t.is_archived ? 'Восстановить сотрудника' : 'Переместить в архив'}" onclick="changesArchivingStatus(${t.id},'${t.login}')" style="background-color: transparent; padding: 4px 0px 4px 10px">
+                    ${archiveIcon}
+                    </button>
                     </td>
             `;
         });
@@ -287,9 +297,9 @@
         method: "POST"
     })
     .then(res => res.json())
-    .then(() => {
-        alert("Сотрудник создан");
-        location.reload();
+    .then(data => {
+          alert(data.message);
+          location.reload();
     });
     }
 
@@ -304,12 +314,23 @@
     }
 
 
-    function deleteEmployee(id, login) {
-        let deleteEmp = prompt("Вы уверены, что хотите удалить аккаунт?\n\nЕсли да - введите логин пользователя.", "Логин");
-        console.log(deleteEmp);
+    function changesArchivingStatus(employee_id, login) {
+        let deleteEmp = prompt("Вы уверены, что хотите архивировать аккаунт?\n\nЕсли да - введите логин пользователя (" + login + ").", "Логин");
         if (deleteEmp == null) {
             return;
         }
+        else if (deleteEmp != login){
+            alert("Логин введён некорректно!");
+            return;
+        }
+        fetch(`/staff/archive/${employee_id}`, {
+            method: "PATCH"
+        })
+        .then(res => res.json())
+        .then(data => {
+            alert(data.message);
+            location.reload();
+        });
     }
 
     function submitEdit() {
@@ -326,8 +347,8 @@
         fetch(`/staff/${editingId}?full_name=${encodeURIComponent(fullName)}&password=${encodeURIComponent(password)}&admin=${isAdmin}`, {
             method: "PUT"
         }).then(res => res.json())
-          .then(() => {
-              alert("Данные обновлены");
+          .then(data => {
+              alert(data.message);
               location.reload();
           });
     }

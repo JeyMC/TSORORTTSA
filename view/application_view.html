@@ -178,7 +178,7 @@
         fetch(`/applications/${id}/status`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ new_status: newStatus })
+            body: JSON.stringify({ new_status: newStatus})
         })
         .then(res => res.json())
         .then(() => window.location.reload());
