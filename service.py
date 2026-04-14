@@ -3,6 +3,8 @@ from models import Employee, Application
 from datetime import datetime
 from utils import generate_login, hash_password
 from docxtpl import DocxTemplate
+from os import mkdir
+from os.path import isdir
 
 
 def find_employee_by_name(db: Session, query: str):
@@ -84,6 +86,8 @@ def update_application_status(db: Session, application_id: int, new_status: int)
 
 
 def generate_docx(full_name, name_priority, name_status, **application_data):
+    if not isdir("user_file/"):
+        mkdir("user_file/")
     template = DocxTemplate("template_docx/template_all_task.docx")
     context = {
         'full_name': full_name,
