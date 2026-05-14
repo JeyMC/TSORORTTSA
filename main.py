@@ -313,7 +313,7 @@ def upload_excel(file: UploadFile = File(...), user=Depends(get_admin_user), db:
         if not full_name:
             continue
 
-        user_login = generate_login(full_name)
+        user_login = generate_login(db, full_name)
 
         symbol_pass = string.digits + string.ascii_letters
         password = ''.join(random.choice(symbol_pass) for _ in range(10))
