@@ -69,7 +69,7 @@
 </head>
 <body>
 <div class="modal">
-    <span class="close" onclick="window.location.href='main_view.html'">&times;</span>
+    <span class="close" onclick="window.location.href='/main'">&times;</span>
     <h2>Заявка системному администратору</h2>
     <div class="form-group">
         <label>Название проблемы*</label>
@@ -106,7 +106,6 @@
         const title = document.getElementById('title').value;
         const cabinet = document.getElementById('cabinet').value;
         const description = document.getElementById('description').value;
-        const id_employee = localStorage.getItem("user_id");
 
         const errorDiv = document.getElementById("create-error");
         errorDiv.textContent = "";
@@ -126,12 +125,17 @@
                 title: title,
                 cabinet_number: cabinet,
                 problem_description: description,
-                id_priority: selectedPriority,
-                id_employee: parseInt(id_employee)
+                id_priority: selectedPriority
             })
-        }).then(res => res.json()).then(data => {
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success) {
+                errorDiv.textContent = data.message;
+                return;
+            }
             alert('Заявка успешно создана!');
-            window.location.href = 'main_view.html';
+            window.location.href = '/main';
         });
     }
 </script>

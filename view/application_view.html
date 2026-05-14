@@ -83,7 +83,7 @@
 </head>
 <body>
 <div class="modal">
-    <span class="close" onclick="window.location.href='main_view.html'">&times;</span>
+    <span class="close" onclick="window.location.href='/main'">&times;</span>
     <h2>Заявка системному администратору</h2>
     <div class="form-group">
         <label>Название:</label>
@@ -131,42 +131,43 @@
 <script>
     const urlParams = new URLSearchParams(window.location.search);
     const id = urlParams.get('id');
-    const isAdmin = urlParams.get('admin') === 'true';
 
     const statuses = ['Новая', 'В работе', 'Завершена'];
 
-    fetch(`/applications/${id}`)
-        .then(res => res.json())
-        .then(data => {
-            document.getElementById('title').value = data.title;
-            document.getElementById('cabinet').value = data.cabinet_number;
-            document.getElementById('description').value = data.problem_description;
-            document.getElementById('date_submission').value = data.date_submission;
-            document.getElementById('date_completion').value = data.date_completion;
-            document.getElementById('priority').value = ['Низкий', 'Средний', 'Высокий'][data.id_priority - 1];
-            document.getElementById('status').value = statuses[data.id_status - 1];
+    async function loadApplication() {
+        const userRes = await fetch("/me");
+        const currentUser = await userRes.json();
+        const isAdmin = currentUser.is_admin;
 
-            if (isAdmin && data.id_status < 3) {
-                const container = document.getElementById("status-buttons");
-                statuses.forEach((name, index) => {
-                    const statusIndex = index + 1;
+        const res = await fetch(`/applications/${id}`);
+        const data = await res.json();
 
-                    if (data.id_status === 2 && statusIndex === 1) return;
-                    if (statusIndex === data.id_status) {
-                        const btn = document.createElement("button");
-                        btn.textContent = name;
-                        btn.classList.add("active");
-                        container.appendChild(btn);
-                    } else {
-                        const btn = document.createElement("button");
-                        btn.textContent = name;
-                        btn.onclick = () => changeStatus(statusIndex);
-                        container.appendChild(btn);
-                    }
-                });
-                document.getElementById('admin-controls').style.display = 'block';
-            }
-        });
+        document.getElementById('title').value = data.title;
+        document.getElementById('cabinet').value = data.cabinet_number;
+        document.getElementById('description').value = data.problem_description;
+        document.getElementById('date_submission').value = data.date_submission;
+        document.getElementById('date_completion').value = data.date_completion;
+        document.getElementById('priority').value = ['Низкий', 'Средний', 'Высокий'][data.id_priority - 1];
+        document.getElementById('status').value = statuses[data.id_status - 1];
+
+        if (isAdmin && data.id_status < 3) {
+            const container = document.getElementById("status-buttons");
+            statuses.forEach((name, index) => {
+                const statusIndex = index + 1;
+                if (data.id_status === 2 && statusIndex === 1) return;
+                const btn = document.createElement("button");
+                btn.textContent = name;
+                if (statusIndex === data.id_status) {
+                    btn.classList.add("active");
+                } else {
+                    btn.onclick = () => changeStatus(statusIndex);
+                }
+                container.appendChild(btn);
+            });
+            document.getElementById('admin-controls').style.display = 'block';
+        }
+    }
+    loadApplication();
 
     function downloadDocx() {
         const urlParams = new URLSearchParams(window.location.search);

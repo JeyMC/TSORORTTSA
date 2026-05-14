@@ -73,21 +73,13 @@
         fetch("/auth?login=" + login + "&password=" + password, {
             method: "POST"
         })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(err => {
-                    throw new Error(err.detail);
-                });
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
-            localStorage.setItem("user_id", data.user_id);
-            localStorage.setItem("is_admin", data.is_admin);
-            window.location.href = "main_view.html";
-        })
-        .catch(err => {
-            errorBox.textContent = err.message;
+            if (!data.success) {
+                errorBox.textContent = data.message;
+                return;
+            }
+            window.location.href = "/main";
         });
     }
 </script>

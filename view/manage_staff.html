@@ -163,7 +163,6 @@
                     points="2.828 17.828 8.914 11.742 15 17.828 17.828 15 11.742 8.914 17.828 2.828 15 0 8.914 6.086 2.828 0 0 2.828 6.085 8.914 0 15 2.828 17.828"/>
         </svg>
     </button>
-    <!-- Админ -->
     <div class="toggle-switch">
         <label for="create-admin" class="toggle-label">Админ</label>
         <label class="switch">
@@ -172,7 +171,6 @@
         </label>
     </div>
     <input type="text" id="create-name" placeholder="ФИО" required style="margin: 10px 0 10px">
-    <!-- Авто пароль -->
     <div class="toggle-switch" style="position: static">
         <label for="create-auto-pass" class="toggle-label">Сгенерировать пароль</label>
         <label class="switch">
@@ -187,7 +185,7 @@
 </div>
 <div class="container">
     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; margin-right: 5px">
-        <button style="margin-bottom:0px" class="back" onclick="window.location.href='main_view.html'">Назад</button>
+        <button style="margin-bottom:0px" class="back" onclick="window.location.href='/main'">Назад</button>
         <h2 style="margin: 0 auto; text-align: center;">Сотрудники</h2>
         <button onclick="openCreateModal()" style="background-color: #28a745; margin-right: 12px">Добавить</button>
         <button onclick="document.getElementById('excel-upload').click()" style="background-color: #28a745">Загрузить из
@@ -291,7 +289,7 @@
         return;
     }
 
-    let url = `/create_employee/?full_name=${encodeURIComponent(fullName)}&auto_password=${autoPassword}&password=${encodeURIComponent(password)}&admin=${isAdmin}`;
+    let url = `/create_employee/?full_name=${encodeURIComponent(fullName)}&auto_password=${autoPassword}&password=${encodeURIComponent(password)}&admin=${encodeURIComponent(isAdmin)}`;
 
     fetch(url, {
         method: "POST"
@@ -337,7 +335,6 @@
         const fullName = document.getElementById("edit-name").value;
         const password = document.getElementById("edit-pass").value;
         const isAdmin = document.getElementById("toggleDone").checked;
-        console.log(password);
 
         if (!fullName && !password) {
             errorDiv.textContent = "Введите ФИО и новый пароль";
@@ -411,7 +408,6 @@
         a.remove();
     })
     .catch((error) => {
-        // Показываем конкретное сообщение об ошибке
         alert(error.message || "Ошибка загрузки файла");
         event.target.value = ''; // Очищаем поле
     });

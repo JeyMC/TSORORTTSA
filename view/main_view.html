@@ -189,7 +189,14 @@
     let allApplications = [];
 
     window.onload = async function () {
-      const res = await fetch('/applications?user_id=' + localStorage.getItem("user_id") + '&admin=' + localStorage.getItem("is_admin"));
+
+        const userRes = await fetch("/me");
+        const currentUser = await userRes.json();
+
+        if (currentUser.is_admin) {
+            document.getElementById("employeeBtn").style.display = "inline-block";
+        }
+      const res = await fetch('/applications');
       const data = await res.json();
       allApplications = data;
       populateCabinets(data);
@@ -240,17 +247,17 @@
     }
 
     function renderApplications(apps) {
-      const container = document.getElementById("applications");
-      container.innerHTML = "";
-      apps.forEach(app => {
-        const div = document.createElement("div");
-        div.className = `application-card status-${app.id_status === 1 ? 'new' : app.id_status === 2 ? 'working' : 'done'}`;
-        div.onclick = () => {
-          window.location.href = `application_view.html?id=${app.id}&admin=${localStorage.getItem("is_admin")}`;
-        };
-        div.innerHTML = `<b>${app.title}</b><br>Кабинет: ${app.cabinet_number} | Приоритет: ${['Низкий','Средний','Высокий'][app.id_priority-1]} | Статус: ${['Новая','В работе','Завершена'][app.id_status-1]}<br><small>Дата: ${app.date_submission}</small>`;
-        container.appendChild(div);
-      });
+        const container = document.getElementById("applications");
+        container.innerHTML = "";
+        apps.forEach(app => {
+            const div = document.createElement("div");
+            div.className = `application-card status-${app.id_status === 1 ? 'new' : app.id_status === 2 ? 'working' : 'done'}`;
+            div.onclick = () => {
+                window.location.href = `/application_view?id=${app.id}`;
+            };
+            div.innerHTML = `<b>${app.title}</b><br>Кабинет: ${app.cabinet_number} | Приоритет: ${['Низкий','Средний','Высокий'][app.id_priority-1]} | Статус: ${['Новая','В работе','Завершена'][app.id_status-1]}<br><small>Дата: ${app.date_submission}</small>`;
+            container.appendChild(div);
+        });
     }
 
     document.getElementById("resetFilters").addEventListener("click", () => {
@@ -264,14 +271,9 @@
       document.getElementById("resetFilters").style.display = "none";
     });
 
-    document.getElementById("employeeBtn").onclick = () => location.href = "manage_staff.html";
-    document.getElementById("createBtn").onclick = () => location.href = "submitting_application.html";
-    document.getElementById("logout").onclick = () => location.href = "login.html";
-
-
-    if (localStorage.getItem("is_admin") === "true") {
-        document.getElementById("employeeBtn").style.display = "inline-block";
-    }
+    document.getElementById("employeeBtn").onclick = () => {window.location.href = "/manage_staff";};
+    document.getElementById("createBtn").onclick = () => {window.location.href = "/submitting_application";};
+    document.getElementById("logout").onclick = () => {window.location.href = "/logout";};
 
     document.addEventListener('DOMContentLoaded', function() {
     const toggleDone = document.getElementById('toggleDone');

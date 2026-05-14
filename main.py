@@ -1,7 +1,9 @@
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Request, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.exception_handlers import http_exception_handler
+from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 from datetime import datetime
@@ -28,6 +30,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.add_middleware(
+    SessionMiddleware,
+    secret_key="nk9Oi73HwzZ&cf#y@0uBSYf%%@yeQeh6DUD1Gw5jxR1tuOgn"
+)
+
 app.mount("/static", StaticFiles(directory="view", html=True), name="static")
 
 Base.metadata.create_all(bind=engine)
@@ -41,35 +48,114 @@ def get_db():
         db.close()
 
 
+def get_current_user(request: Request, db: Session = Depends(get_db)):
+    user_id = request.session.get("user_id")
+    if (not user_id) and (not db.query(Employee).filter(Employee.id == user_id).all()):
+        raise HTTPException(401)
+    return {
+        "user_id": user_id,
+        "is_admin": request.session.get("is_admin")
+    }
+
+
+def get_admin_user(user=Depends(get_current_user)):
+    if not user["is_admin"]:
+        raise HTTPException(403)
+    return user
+
+
+@app.exception_handler(HTTPException)
+async def custom_http_exception_handler(request: Request, exc: HTTPException):
+
+    if exc.status_code == 401:
+        return RedirectResponse("/login")
+
+    if exc.status_code == 403:
+        return RedirectResponse("/main")
+
+    return await http_exception_handler(request, exc)
+
+
+#РОУТЫ
+@app.get("/login")
+def login_page(request: Request):
+    user_id = request.session.get("user_id")
+    print(user_id)
+    if user_id:
+        return RedirectResponse(url="/main")
+    return FileResponse("view/login.html")
+
+
+@app.get("/main")
+def main_page(user=Depends(get_current_user)):
+    return FileResponse("view/main_view.html")
+
+
+@app.get("/manage_staff")
+def manage_staff(user=Depends(get_current_user)):
+    return FileResponse("view/manage_staff.html")
+
+
+@app.get("/submitting_application")
+def submitting_application(user=Depends(get_current_user)):
+    return FileResponse("view/submitting_application.html")
+
+
+@app.get("/application_view")
+def application_view(user=Depends(get_current_user)):
+    return FileResponse("view/application_view.html")
+
+
 @app.get("/")
-def root():
-    return RedirectResponse(url="/static/login.html")
+def root(user=Depends(get_current_user)):
+    if user["user_id"]:
+        return RedirectResponse(url="/main")
+    return RedirectResponse(url="/login")
 
 
-@app.post("/logout")
-def logout():
-    return RedirectResponse(url="/static/login.html")
+@app.get("/logout")
+def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse(url="/login", status_code=302)
+
+
+@app.get("/me")
+def get_me(user=Depends(get_current_user)):
+    return user
 
 
 @app.post("/auth")
-def login(login: str, password: str, db: Session = Depends(get_db)):
+def login(login: str, password: str, request: Request, db: Session = Depends(get_db)):
     users = db.query(Employee).filter(Employee.login == login).all()
     if not users:
-        raise HTTPException(status_code=404, detail="Сотрудник не найден!")
+        return {
+            "success": False,
+            "message": "Неверный логин или пароль!"
+        }
     for user in users:
         if hash_password(password) == user.hashed_password:
             if user.is_archived == 1:
-                raise HTTPException(status_code=403, detail="Пользователь в архиве!")
+                return {
+                    "success": False,
+                    "message": "Пользователь в архиве!"
+                }
+            request.session["user_id"] = user.id
+            request.session["is_admin"] = user.check_admin
             return {
+                "success": True,
                 "user_id": user.id,
                 "full_name": user.full_name,
                 "is_admin": user.check_admin
             }
-    raise HTTPException(status_code=401, detail="Неверный логин или пароль!")
+    return {
+        "success": False,
+        "message": "Неверный логин или пароль!"
+    }
 
 
 @app.post("/create_employee")
-def create_employee(full_name: str, auto_password: bool, password: str, admin: bool, db: Session = Depends(get_db)):
+def create_employee(full_name: str, auto_password: bool, password: str, admin: bool, user=Depends(get_current_user),
+                    db: Session = Depends(get_db)):
     if auto_password:
         symbol_pass = string.digits + string.ascii_letters
         password = ''.join(random.choice(symbol_pass) for _ in range(10))
@@ -81,12 +167,13 @@ def create_employee(full_name: str, auto_password: bool, password: str, admin: b
 
 
 @app.get("/staff")
-def get_staff(db: Session = Depends(get_db)):
+def get_staff(db: Session = Depends(get_db), user=Depends(get_admin_user)):
     return db.query(Employee).order_by(Employee.is_archived, Employee.full_name).all()
 
 
 @app.put("/staff/{employee_id}")
-def update_staff(employee_id: int, full_name: str, password: str, admin: bool, db: Session = Depends(get_db)):
+def update_staff(employee_id: int, full_name: str, password: str, admin: bool, user=Depends(get_admin_user),
+                 db: Session = Depends(get_db)):
     employee = db.query(Employee).filter(Employee.id == employee_id).first()
     if not employee:
         return {"message": "Сотрудник не найден."}
@@ -98,7 +185,7 @@ def update_staff(employee_id: int, full_name: str, password: str, admin: bool, d
 
 
 @app.patch("/staff/archive/{employee_id}")
-def archive_staff(employee_id, db: Session = Depends(get_db)):
+def archive_staff(employee_id, user=Depends(get_admin_user), db: Session = Depends(get_db)):
     status = archive_employee(db, employee_id)
     if status == "done_archive":
         return {"message": "Сотрудник помещён в архив!"}
@@ -112,26 +199,26 @@ def archive_staff(employee_id, db: Session = Depends(get_db)):
 
 
 @app.post("/applications")
-def create_application(data: ApplicationCreate, db: Session = Depends(get_db)):
+def create_application(data: ApplicationCreate, user=Depends(get_current_user), db: Session = Depends(get_db)):
     data_query = Application(
         date_submission=str(datetime.now().strftime("%d.%m.%Y")),
         date_completion="",
         cabinet_number=data.cabinet_number,
         title=data.title,
         problem_description=data.problem_description,
-        id_employee=data.id_employee,
+        id_employee=user["user_id"],
         id_priority=data.id_priority,
         id_status=1
     )
     db.add(data_query)
     db.commit()
     db.refresh(data_query)
-    return {"message": "Заявка создана", "id": data_query.id}
+    return {"success": True, "message": "Заявка создана", "id": data_query.id}
 
 
 @app.get("/applications", response_model=list[ApplicationOut])
-def get_applications(user_id: int, admin: bool, db: Session = Depends(get_db)):
-    if admin:
+def get_applications(user=Depends(get_current_user), db: Session = Depends(get_db)):
+    if user['is_admin']:
         query_data_status2 = db.query(Application).where(Application.id_status == 2).order_by(
             desc(Application.id_status),
             desc(func.substr(Application.date_submission, 7, 4) +
@@ -143,13 +230,13 @@ def get_applications(user_id: int, admin: bool, db: Session = Depends(get_db)):
                                         func.substr(Application.date_submission, 1, 2))).all()
         query_data = query_data_status2 + query_data_status13
     else:
-        query_data_status2 = db.query(Application).filter(Application.id_employee == user_id).where(
+        query_data_status2 = db.query(Application).filter(Application.id_employee == user['user_id']).where(
             Application.id_status == 2).order_by(
             desc(Application.id_status),
             desc(func.substr(Application.date_submission, 7, 4) +
                  func.substr(Application.date_submission, 4, 2) +
                  func.substr(Application.date_submission, 1, 2))).all()
-        query_data_status13 = db.query(Application).filter(Application.id_employee == user_id).where(
+        query_data_status13 = db.query(Application).filter(Application.id_employee == user['user_id']).where(
             Application.id_status != 2).order_by(
             Application.id_status,
             desc(func.substr(Application.date_submission, 7, 4) +
@@ -161,7 +248,7 @@ def get_applications(user_id: int, admin: bool, db: Session = Depends(get_db)):
 
 
 @app.get("/applications/{app_id}", response_model=ApplicationOut)
-def get_application_by_id(app_id: int, db: Session = Depends(get_db)):
+def get_application_by_id(app_id: int, user=Depends(get_current_user), db: Session = Depends(get_db)):
     data_query = db.query(Application).filter(Application.id == app_id).first()
     if not data_query:
         raise HTTPException(status_code=404, detail="Заявка не найдена")
@@ -172,7 +259,7 @@ def get_application_by_id(app_id: int, db: Session = Depends(get_db)):
 
 
 @app.put("/applications/{app_id}/status")
-def update_application_status(app_id: int, data: StatusUpdate, db: Session = Depends(get_db)):
+def update_application_status(app_id: int, data: StatusUpdate, user=Depends(get_current_user), db: Session = Depends(get_db)):
     data_query = db.query(Application).filter(Application.id == app_id).first()
     if not data_query:
         raise HTTPException(status_code=404, detail="Заявка не найдена")
@@ -184,7 +271,7 @@ def update_application_status(app_id: int, data: StatusUpdate, db: Session = Dep
 
 
 @app.get("/applications/{id}/export")
-def export_docx(id: int, db: Session = Depends(get_db)):
+def export_docx(id: int, user=Depends(get_current_user), db: Session = Depends(get_db)):
     data_query = db.query(Application).filter(Application.id == id).first()
     name_priority = db.query(PriorityApplication).filter(PriorityApplication.id == int(data_query.id_priority)).first()
     name_status = db.query(ApplicationStatus).filter(ApplicationStatus.id == int(data_query.id_status)).first()
@@ -205,7 +292,7 @@ def export_docx(id: int, db: Session = Depends(get_db)):
 
 
 @app.post("/upload_excel")
-def upload_excel(file: UploadFile = File(...), db: Session = Depends(get_db)):
+def upload_excel(file: UploadFile = File(...), user=Depends(get_admin_user), db: Session = Depends(get_db)):
     if not file.filename.endswith(".xlsx"):
         raise HTTPException(status_code=400, detail="Нужен Excel (.xlsx) файл")
 

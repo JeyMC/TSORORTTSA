@@ -5,7 +5,6 @@ class ApplicationCreate(BaseModel):
     cabinet_number: str
     title: str
     problem_description: str
-    id_employee: int
     id_priority: int
 
 
