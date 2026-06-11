@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 - Страница не найдена</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            background: linear-gradient(135deg, #f4f7fa, #e9eef5);
+
+            font-family: 'Inter', sans-serif;
+        }
+
+        .container {
+            text-align: center;
+
+            background: white;
+            padding: 50px;
+            border-radius: 16px;
+
+            box-shadow: 0 10px 30px rgba(0,0,0,.08);
+
+            max-width: 600px;
+            width: 90%;
+        }
+
+        .error-code {
+            font-size: 120px;
+            font-weight: 700;
+            color: #28a745;
+            line-height: 1;
+            margin: 0;
+        }
+
+        .title {
+            margin-top: 10px;
+            font-size: 32px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .description {
+            margin-top: 15px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .actions {
+            margin-top: 35px;
+        }
+
+        .btn {
+            display: inline-block;
+
+            text-decoration: none;
+
+            background: #28a745;
+            color: white;
+
+            padding: 12px 24px;
+
+            border-radius: 8px;
+
+            transition: .2s;
+        }
+
+        .btn:hover {
+            background: #218838;
+            transform: translateY(-1px);
+        }
+
+        .icon {
+            font-size: 60px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="icon">🔍</div>
+
+    <h1 class="error-code">404</h1>
+
+    <div class="title">
+        Страница не найдена
+    </div>
+
+    <div class="description">
+        Возможно страница была удалена, перемещена
+        или адрес введён неверно.
+    </div>
+
+    <div class="actions">
+        <a href="/main" class="btn">
+            Вернуться на главную
+        </a>
+    </div>
+</div>
+
+</body>
+</html>

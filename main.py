@@ -4,6 +4,7 @@ from fastapi.responses import RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.exception_handlers import http_exception_handler
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 from datetime import datetime
@@ -75,13 +76,17 @@ def get_admin_user(user=Depends(get_current_user)):
     return user
 
 
-@app.exception_handler(HTTPException)
-async def custom_http_exception_handler(request: Request, exc: HTTPException):
+@app.exception_handler(StarletteHTTPException)
+async def custom_http_handler(request: Request, exc: StarletteHTTPException):
+
     if exc.status_code == 401:
         return RedirectResponse("/login")
 
     if exc.status_code == 403:
         return RedirectResponse("/main")
+
+    if exc.status_code in (404, 405):
+        return FileResponse("view/404.html", status_code=404)
 
     return await http_exception_handler(request, exc)
 
@@ -90,7 +95,6 @@ async def custom_http_exception_handler(request: Request, exc: HTTPException):
 @app.get("/login")
 def login_page(request: Request):
     user_id = request.session.get("user_id")
-    print(user_id)
     if user_id:
         return RedirectResponse(url="/main")
     return FileResponse("view/login.html")
@@ -276,7 +280,6 @@ async def create_application(title: str = Form(...), cabinet_number: str = Form(
 
         return {"success": True, "message": "Заявка создана", "id": data_query.id}
     except Exception as ex:
-        print(ex)
         db.delete(data_query)
         db.commit()
 
