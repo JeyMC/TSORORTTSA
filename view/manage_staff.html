@@ -234,8 +234,8 @@
                             </svg>`
             body.innerHTML += `
                 <tr style="opacity: ${t.is_archived ? 0.5 : 1}">
-                    <td>${t.full_name}</td>
-                    <td>${t.login}</td>
+                    <td style = "word-wrap: break-word;word-break:break-word">${t.full_name}</td>
+                    <td style = "word-wrap: break-word;word-break:break-word">${t.login}</td>
                     <td>${t.check_admin ? '✔️' : ''}</td>
                     <td style="display: flex; align-items: center;"><button onclick="openEdit(${t.id}, '${t.full_name}',${t.check_admin ? 1 : 0})">Редактировать</button>
 
@@ -248,7 +248,10 @@
     }
     function filterStaff() {
         const query = document.getElementById("search").value.toLowerCase();
-        const filtered = allStaff.filter(t => t.full_name.toLowerCase().includes(query));
+        const filtered = allStaff.filter(t =>
+            t.full_name.toLowerCase().includes(query) ||
+            t.login.toLowerCase().includes(query)
+        );
         renderStaff(filtered);
     }
 

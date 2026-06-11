@@ -79,6 +79,82 @@
             color: white;
             cursor: default;
         }
+
+        #previewContainer {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .preview-item {
+            position: relative;
+            width: 100px;
+        }
+
+        .preview-item img {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            cursor: pointer;
+        }
+
+        .preview-name {
+            margin-top: 4px;
+            font-size: 11px;
+            text-align: center;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .image-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.8);
+            z-index: 9999;
+        }
+
+        .image-modal img {
+            max-width: 90%;
+            max-height: 90%;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .close-preview {
+            position: absolute;
+            right: 25px;
+            top: 15px;
+            color: white;
+            font-size: 40px;
+            cursor: pointer;
+        }
+
+        .nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 40px;
+            border: none;
+            background: rgba(0,0,0,.4);
+            color: white;
+            cursor: pointer;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .left {
+            left: 30px;
+        }
+
+        .right {
+            right: 30px;
+        }
     </style>
 </head>
 <body>
@@ -96,6 +172,18 @@
     <div class="form-group">
         <label>Описание:</label>
         <textarea id="description" rows="3" disabled style="min-height: 20px; max-height: 210px; max-width: 96%; min-width: 96%;"></textarea>
+    </div>
+    <div class="form-group" id="photo-section" style="display:none;">
+        <label>Фотографии:</label>
+
+        <div id="previewContainer"></div>
+
+        <div id="imageModal" class="image-modal">
+            <span class="close-preview">&times;</span>
+            <img id="fullImage">
+            <button class="nav-btn left" onclick="prevImage()">❮</button>
+            <button class="nav-btn right" onclick="nextImage()">❯</button>
+        </div>
     </div>
     <div class="form-group" style="display: flex; flex-direction: row; flex-wrap: nowrap; margin-bottom: 0px">
         <div class="form-group">
@@ -131,6 +219,8 @@
 <script>
     const urlParams = new URLSearchParams(window.location.search);
     const id = urlParams.get('id');
+    let currentImageIndex = 0;
+    let applicationFiles = [];
 
     const statuses = ['Новая', 'В работе', 'Завершена'];
 
@@ -166,6 +256,27 @@
             });
             document.getElementById('admin-controls').style.display = 'block';
         }
+        applicationFiles = data.files || [];
+
+        if (applicationFiles.length > 0) {
+            document.getElementById("photo-section").style.display = "block";
+
+            const container = document.getElementById("previewContainer");
+            container.innerHTML = "";
+
+            applicationFiles.forEach((file, index) => {
+                const div = document.createElement("div");
+
+                div.className = "preview-item";
+
+                div.innerHTML = `
+                    <img src="${file.url}" onclick="showImage(${index})" title="${file.name}">
+                    <div class="preview-name">${file.name}</div>
+                `;
+
+                container.appendChild(div);
+            });
+        }
     }
     loadApplication();
 
@@ -184,6 +295,63 @@
         .then(res => res.json())
         .then(() => window.location.reload());
     }
+
+    function showImage(index) {
+        currentImageIndex = index;
+
+        document.getElementById("fullImage").src =
+            applicationFiles[currentImageIndex].url;
+
+        document.getElementById("imageModal").style.display = "block";
+    }
+
+    function prevImage() {
+        currentImageIndex--;
+
+        if (currentImageIndex < 0) {
+            currentImageIndex = applicationFiles.length - 1;
+        }
+
+        document.getElementById("fullImage").src =
+            applicationFiles[currentImageIndex].url;
+    }
+
+    function nextImage() {
+        currentImageIndex++;
+
+        if (currentImageIndex >= applicationFiles.length) {
+            currentImageIndex = 0;
+        }
+
+        document.getElementById("fullImage").src =
+            applicationFiles[currentImageIndex].url;
+    }
+
+    document.querySelector(".close-preview").onclick = () => {
+        document.getElementById("imageModal").style.display = "none";
+    };
+
+    document.getElementById("imageModal").onclick = (e) => {
+        if (e.target.id === "imageModal") {
+            document.getElementById("imageModal").style.display = "none";
+        }
+    };
+
+    document.addEventListener("keydown", (e) => {
+        if (document.getElementById("imageModal").style.display !== "block") {
+            return;
+        }
+        if (e.key === "ArrowLeft") {
+            prevImage();
+        }
+        if (e.key === "ArrowRight") {
+            nextImage();
+        }
+        if (e.key === "Escape") {
+            document.getElementById("imageModal").style.display = "none";
+        }
+    });
+
 </script>
 </body>
 </html>

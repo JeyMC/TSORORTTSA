@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, Request, Depends, HTTPException
+from fastapi import FastAPI, UploadFile, File, Request, Depends, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -11,8 +11,14 @@ import uvicorn
 import openpyxl
 import random
 import string
-from os import remove as delete_files_user
-from os.path import isfile
+from os import makedirs, listdir, remove as delete_files_user
+from os.path import (isfile,
+                     join as os_join,
+                     exists as os_exists)
+from typing import List
+from pathlib import Path
+import shutil
+import uuid
 
 from database import Base, engine, SessionLocal
 from models import Employee, Application, PriorityApplication, ApplicationStatus
@@ -36,8 +42,13 @@ app.add_middleware(
 )
 
 app.mount("/static", StaticFiles(directory="view", html=True), name="static")
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 Base.metadata.create_all(bind=engine)
+
+MAX_FILES = 25
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 МБ
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 
 
 def get_db():
@@ -66,7 +77,6 @@ def get_admin_user(user=Depends(get_current_user)):
 
 @app.exception_handler(HTTPException)
 async def custom_http_exception_handler(request: Request, exc: HTTPException):
-
     if exc.status_code == 401:
         return RedirectResponse("/login")
 
@@ -76,7 +86,7 @@ async def custom_http_exception_handler(request: Request, exc: HTTPException):
     return await http_exception_handler(request, exc)
 
 
-#РОУТЫ
+# РОУТЫ
 @app.get("/login")
 def login_page(request: Request):
     user_id = request.session.get("user_id")
@@ -199,49 +209,120 @@ def archive_staff(employee_id, user=Depends(get_admin_user), db: Session = Depen
 
 
 @app.post("/applications")
-def create_application(data: ApplicationCreate, user=Depends(get_current_user), db: Session = Depends(get_db)):
+async def create_application(title: str = Form(...), cabinet_number: str = Form(...),
+                             problem_description: str = Form(""), id_priority: int = Form(...),
+                             files: List[UploadFile] = File([]), user=Depends(get_current_user),
+                             db: Session = Depends(get_db)):
+    if len(files) > 25:
+        return {
+            "success": False,
+            "message": "Можно прикрепить не более 25 файлов"
+        }
+
+    for file in files:
+        content = await file.read()
+
+        if len(content) > MAX_FILE_SIZE:
+            return {
+                "success": False,
+                "message": f"Файл {file.filename} превышает 10 МБ"
+            }
+
+        await file.seek(0)
+
     data_query = Application(
-        date_submission=str(datetime.now().strftime("%d.%m.%Y")),
+        date_submission=datetime.now().strftime("%d.%m.%Y"),
         date_completion="",
-        cabinet_number=data.cabinet_number,
-        title=data.title,
-        problem_description=data.problem_description,
+        cabinet_number=cabinet_number,
+        title=title,
+        problem_description=problem_description,
         id_employee=user["user_id"],
-        id_priority=data.id_priority,
+        id_priority=id_priority,
         id_status=1
     )
     db.add(data_query)
     db.commit()
     db.refresh(data_query)
-    return {"success": True, "message": "Заявка создана", "id": data_query.id}
+
+    app_id = data_query.id
+    today = datetime.now()
+
+    folder = os_join(
+        "uploads",
+        str(today.year),
+        f"{today.month:02}",
+        f"{today.day:02}",
+        str(app_id)
+    )
+
+    try:
+        makedirs(folder, exist_ok=True)
+
+        for set_file in enumerate(files):
+            file = set_file[1]
+            ext = Path(file.filename).suffix.lower()
+
+            if ext not in ALLOWED_EXTENSIONS:
+                return {
+                    "success": False,
+                    "message": f"Недопустимый формат файла: {file.filename}"
+                }
+            filename = f"{set_file[0]}_{uuid.uuid4().hex}{ext}"
+            file_path = os_join(folder, filename)
+
+            with open(file_path, "wb") as f:
+                shutil.copyfileobj(file.file, f)
+                await file.close()
+
+        return {"success": True, "message": "Заявка создана", "id": data_query.id}
+    except Exception as ex:
+        print(ex)
+        db.delete(data_query)
+        db.commit()
+
+        return {
+            "success": False,
+            "message": "Ошибка сохранения файлов"
+        }
 
 
 @app.get("/applications", response_model=list[ApplicationOut])
 def get_applications(user=Depends(get_current_user), db: Session = Depends(get_db)):
     if user['is_admin']:
         query_data_status2 = db.query(Application).where(Application.id_status == 2).order_by(
-            desc(Application.id_status),
-            desc(func.substr(Application.date_submission, 7, 4) +
-                 func.substr(Application.date_submission, 4, 2) +
-                 func.substr(Application.date_submission, 1, 2))).all()
+            func.substr(Application.date_submission, 7, 4),
+            func.substr(Application.date_submission, 4, 2),
+            func.substr(Application.date_submission, 1, 2),
+            desc(Application.id_priority),
+            Application.cabinet_number
+        ).all()
         query_data_status13 = db.query(Application).where(Application.id_status != 2).order_by(
-            Application.id_status, desc(func.substr(Application.date_submission, 7, 4) +
-                                        func.substr(Application.date_submission, 4, 2) +
-                                        func.substr(Application.date_submission, 1, 2))).all()
+            Application.id_status,
+            func.substr(Application.date_submission, 7, 4),
+            func.substr(Application.date_submission, 4, 2),
+            func.substr(Application.date_submission, 1, 2),
+            desc(Application.id_priority)
+        ).all()
         query_data = query_data_status2 + query_data_status13
     else:
         query_data_status2 = db.query(Application).filter(Application.id_employee == user['user_id']).where(
             Application.id_status == 2).order_by(
             desc(Application.id_status),
-            desc(func.substr(Application.date_submission, 7, 4) +
-                 func.substr(Application.date_submission, 4, 2) +
-                 func.substr(Application.date_submission, 1, 2))).all()
+            func.substr(Application.date_submission, 7, 4),
+            func.substr(Application.date_submission, 4, 2),
+            func.substr(Application.date_submission, 1, 2),
+            desc(Application.id_priority),
+            Application.cabinet_number
+        ).all()
         query_data_status13 = db.query(Application).filter(Application.id_employee == user['user_id']).where(
             Application.id_status != 2).order_by(
             Application.id_status,
-            desc(func.substr(Application.date_submission, 7, 4) +
-                 func.substr(Application.date_submission, 4, 2) +
-                 func.substr(Application.date_submission, 1, 2))).all()
+            func.substr(Application.date_submission, 7, 4),
+            func.substr(Application.date_submission, 4, 2),
+            func.substr(Application.date_submission, 1, 2),
+            desc(Application.id_priority),
+            Application.cabinet_number
+        ).all()
         query_data = query_data_status2 + query_data_status13
 
     return query_data
@@ -255,11 +336,40 @@ def get_application_by_id(app_id: int, user=Depends(get_current_user), db: Sessi
     file_path = f"user_file/generated_application_{data_query.title}.docx"
     if isfile(file_path):
         delete_files_user(file_path)
-    return data_query
+
+    submission_date = datetime.strptime(
+        data_query.date_submission,
+        "%d.%m.%Y"
+    )
+
+    folder = os_join(
+        "uploads",
+        str(submission_date.year),
+        f"{submission_date.month:02}",
+        f"{submission_date.day:02}",
+        str(app_id)
+    )
+    files = []
+
+    if os_exists(folder):
+        for file in sorted(
+                listdir(folder),
+                key=lambda x: int(x.split("_")[0])
+        ):
+            files.append({
+                "name": file,
+                "url": f"/uploads/{submission_date.year}/{submission_date.month:02}/{submission_date.day:02}/{app_id}/{file}"
+            })
+    result = {
+        **ApplicationOut.model_validate(data_query).model_dump(),
+        "files": files
+    }
+    return result
 
 
 @app.put("/applications/{app_id}/status")
-def update_application_status(app_id: int, data: StatusUpdate, user=Depends(get_current_user), db: Session = Depends(get_db)):
+def update_application_status(app_id: int, data: StatusUpdate, user=Depends(get_current_user),
+                              db: Session = Depends(get_db)):
     data_query = db.query(Application).filter(Application.id == app_id).first()
     if not data_query:
         raise HTTPException(status_code=404, detail="Заявка не найдена")

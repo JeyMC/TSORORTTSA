@@ -18,6 +18,7 @@ class ApplicationOut(BaseModel):
     id_employee: int
     id_priority: int
     id_status: int
+    files: list = []
 
     model_config = {
         "from_attributes": True

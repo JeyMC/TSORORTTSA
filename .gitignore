@@ -3,3 +3,4 @@ __pycache__/*
 tickets.db
 employee_export.xlsx
 .idea/*
+uploads

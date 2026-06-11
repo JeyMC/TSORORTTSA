@@ -1,71 +1,195 @@
 <!DOCTYPE html>
 <html lang="ru">
+<style>
+    body {
+        font-family: 'Inter', sans-serif;
+        background-color: rgba(0,0,0,0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        margin: 0;
+    }
+    .modal {
+        background: #fff;
+        border-radius: 10px;
+        padding: 30px;
+        width: 600px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        position: relative;
+    }
+    .modal h2 {
+        margin-top: 0;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    input, textarea {
+        min-width: 94%;
+        max-width: 94%;
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+        font-size: 14px;
+    }
+    .priority-buttons button {
+        margin-right: 10px;
+        padding: 10px 16px;
+        border: 1px solid #aaa;
+        border-radius: 6px;
+        background: #f4f4f4;
+        cursor: pointer;
+    }
+    .priority-buttons button.selected {
+        background-color: #28a745;
+        color: white;
+    }
+    .submit-btn {
+        background-color: #28a745;
+        color: white;
+        border: none;
+        padding: 12px 20px;
+        font-size: 16px;
+        border-radius: 8px;
+        cursor: pointer;
+    }
+    .close {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        font-size: 24px;
+        cursor: pointer;
+    }
+
+    .drop-zone {
+        border: 2px dashed #999;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: .2s;
+    }
+
+    .drop-zone.dragover {
+        border-color: #28a745;
+        background: #f0fff4;
+    }
+
+    #fileList {
+        margin-top: 10px;
+    }
+
+    .file-item {
+        margin: 5px 0;
+    }
+
+    .drop-zone {
+        border: 2px dashed #ccc;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        cursor: pointer;
+    }
+
+    .drop-zone.dragover {
+        border-color: #28a745;
+    }
+
+    #previewContainer {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 15px;
+    }
+
+    .preview-item {
+        position: relative;
+        width: 100px;
+    }
+
+    .preview-item img {
+        width: 100px;
+        height: 100px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+        cursor: pointer;
+    }
+
+    .file-name {
+        margin-top: 4px;
+        font-size: 11px;
+        text-align: center;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .remove-file {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: none;
+        background: red;
+        color: white;
+        cursor: pointer;
+    }
+
+    .image-modal {
+        display: none;
+        position: fixed;
+        z-index: 9999;
+        inset: 0;
+        background: rgba(0,0,0,.8);
+    }
+
+    .image-modal img {
+        max-width: 90%;
+        max-height: 90%;
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    .close-preview {
+        position: absolute;
+        top: 20px;
+        right: 30px;
+        color: white;
+        font-size: 40px;
+        cursor: pointer;
+    }
+
+    .nav-btn {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 40px;
+        border: none;
+        background: rgba(0,0,0,.4);
+        color: white;
+        cursor: pointer;
+        padding: 15px;
+        border-radius: 8px;
+    }
+
+    #prevImage {
+        left: 20px;
+    }
+
+    #nextImage {
+        right: 20px;
+    }
+</style>
 <head>
     <meta  name="viewport"  content="width=device-width, initial-scale=0.7, viewport-fit=cover" />
     <meta charset="UTF-8">
     <title>Создание заявки</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: rgba(0,0,0,0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .modal {
-            background: #fff;
-            border-radius: 10px;
-            padding: 30px;
-            width: 600px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            position: relative;
-        }
-        .modal h2 {
-            margin-top: 0;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        input, textarea {
-            min-width: 94%;
-            max-width: 94%;
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid #ccc;
-            font-size: 14px;
-        }
-        .priority-buttons button {
-            margin-right: 10px;
-            padding: 10px 16px;
-            border: 1px solid #aaa;
-            border-radius: 6px;
-            background: #f4f4f4;
-            cursor: pointer;
-        }
-        .priority-buttons button.selected {
-            background-color: #28a745;
-            color: white;
-        }
-        .submit-btn {
-            background-color: #28a745;
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            font-size: 16px;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-        .close {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            font-size: 24px;
-            cursor: pointer;
-        }
-    </style>
 </head>
 <body>
 <div class="modal">
@@ -73,15 +197,31 @@
     <h2>Заявка системному администратору</h2>
     <div class="form-group">
         <label>Название проблемы*</label>
-        <input type="text" id="title" required>
+        <input type="text" id="title" maxlength="100" required>
     </div>
     <div class="form-group">
         <label>Кабинет*</label>
-        <input type="text" id="cabinet" required>
+        <input type="text" id="cabinet" maxlength="50" required>
     </div>
     <div class="form-group">
         <label>Описание проблемы</label>
         <textarea id="description" rows="3" style="min-height: 20px; max-height: 400px"></textarea>
+    </div>
+    <div class="form-group">
+        <label>Фотографии</label>
+
+        <div id="dropZone" class="drop-zone" style="max-width: 90%">
+            Перетащите файлы сюда или нажмите для выбора
+            <input type="file" id="fileInput" multiple accept=".png, .jpg, .jpeg, .webp" hidden>
+        </div>
+        <div id="filesCount">0 / 25</div>
+        <div id="previewContainer"></div>
+        <div id="imageModal" class="image-modal">
+            <span class="close-preview">&times;</span>
+            <img id="fullImage">
+            <button id="prevImage" class="nav-btn">❮</button>
+            <button id="nextImage" class="nav-btn">❯</button>
+        </div>
     </div>
     <div class="form-group">
         <label>Уровень приоритета</label>
@@ -95,6 +235,9 @@
     <button class="submit-btn" onclick="submitForm()">Создать заявку</button>
 </div>
 <script>
+    let selectedFiles = [];
+    let currentImageIndex = 0;
+
     let selectedPriority = 1;
     function selectPriority(level) {
         selectedPriority = level;
@@ -102,7 +245,107 @@
         document.querySelectorAll('.priority-buttons button')[level - 1].classList.add('selected');
     }
 
-    function submitForm() {
+    function addFiles(files) {
+        for (const file of files) {
+            if (selectedFiles.length >= 25) {
+                alert("Достигнут лимит в 25 файлов");
+                break;
+            }
+            if (!file.type.startsWith("image/")) {
+                continue;
+            }
+            selectedFiles.push(file);
+        }
+        renderPreviews();
+    }
+
+    function renderPreviews() {
+        const container = document.getElementById("previewContainer");
+        document.getElementById("filesCount").textContent =
+        `${selectedFiles.length} / 25`;
+        container.innerHTML = "";
+
+        selectedFiles.forEach((file, index) => {
+            const url = URL.createObjectURL(file);
+            const div = document.createElement("div");
+            div.className = "preview-item";
+            div.innerHTML = `
+                <img src="${url}" onclick="showImage(${index})" title="${file.name}
+${(file.size / 1024 / 1024).toFixed(2)} МБ">
+                <button
+                    type="button"
+                    class="remove-file"
+                    onclick="removeFile(${index})">
+                    ×
+                </button>
+                <div class="file-name" title="${file.name}">
+                    ${file.name}
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function removeFile(index) {
+        selectedFiles.splice(index, 1);
+        renderPreviews();
+    }
+
+    function showImage(index) {
+        currentImageIndex = index;
+
+        document.getElementById("fullImage").src =
+            URL.createObjectURL(selectedFiles[index]);
+        document.getElementById("imageModal").style.display = "block";
+    }
+
+    document.querySelector(".close-preview").onclick = () => {
+        document.getElementById("imageModal").style.display = "none";
+    };
+    document.getElementById("imageModal").onclick = (e) => {
+        if (e.target.id === "imageModal") {
+            document.getElementById("imageModal").style.display = "none";
+        }
+    };
+
+    function updateModalImage() {
+        document.getElementById("fullImage").src =
+            URL.createObjectURL(selectedFiles[currentImageIndex]);
+    }
+
+    document.getElementById("prevImage").onclick = (e) => {
+        e.stopPropagation();
+        currentImageIndex--;
+        if (currentImageIndex < 0) {
+            currentImageIndex = selectedFiles.length - 1;
+        }
+        updateModalImage();
+    };
+    document.getElementById("nextImage").onclick = (e) => {
+        e.stopPropagation();
+        currentImageIndex++;
+        if (currentImageIndex >= selectedFiles.length) {
+            currentImageIndex = 0;
+        }
+        updateModalImage();
+    };
+
+    document.addEventListener("keydown", (e) => {
+        if (document.getElementById("imageModal").style.display !== "block") {
+            return;
+        }
+        if (e.key === "ArrowLeft") {
+            document.getElementById("prevImage").click();
+        }
+        if (e.key === "ArrowRight") {
+            document.getElementById("nextImage").click();
+        }
+        if (e.key === "Escape") {
+            document.getElementById("imageModal").style.display = "none";
+        }
+    });
+
+    async function submitForm() {
         const title = document.getElementById('title').value;
         const cabinet = document.getElementById('cabinet').value;
         const description = document.getElementById('description').value;
@@ -113,31 +356,62 @@
         if (!title) {
             errorDiv.textContent = "Введите Название";
             return;
-        } else if (!cabinet) {
+        }
+
+        if (!cabinet) {
             errorDiv.textContent = "Введите Кабинет";
             return;
         }
 
-        fetch('/applications', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                title: title,
-                cabinet_number: cabinet,
-                problem_description: description,
-                id_priority: selectedPriority
-            })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (!data.success) {
-                errorDiv.textContent = data.message;
-                return;
-            }
-            alert('Заявка успешно создана!');
-            window.location.href = '/main';
+        const formData = new FormData();
+
+        formData.append("title", title);
+        formData.append("cabinet_number", cabinet);
+        formData.append("problem_description", description);
+        formData.append("id_priority", selectedPriority);
+
+        selectedFiles.forEach(file => {
+            formData.append("files", file);
         });
+
+        const response = await fetch("/applications", {
+            method: "POST",
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert("Заявка успешно создана");
+            location.href = "/main";
+        } else {
+            errorDiv.textContent = data.message;
+        }
     }
+
+    const dropZone = document.getElementById("dropZone");
+    const fileInput = document.getElementById("fileInput");
+
+    dropZone.onclick = () => fileInput.click();
+
+    fileInput.onchange = e => addFiles(e.target.files);
+
+    dropZone.addEventListener("dragover", e => {
+        e.preventDefault();
+        dropZone.classList.add("dragover");
+    });
+
+    dropZone.addEventListener("dragleave", () => {
+        dropZone.classList.remove("dragover");
+    });
+
+    dropZone.addEventListener("drop", e => {
+        e.preventDefault();
+
+        dropZone.classList.remove("dragover");
+
+        addFiles(e.dataTransfer.files);
+    });
 </script>
 </body>
 </html>

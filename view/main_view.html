@@ -153,7 +153,7 @@
         <option value="2">Средний</option>
         <option value="3">Высокий</option>
     </select>
-    <select id="cabinetFilter">
+    <select id="cabinetFilter" style="max-width: 125px;">
         <option value="">Все кабинеты</option>
     </select>
     <input type="text" id="searchTitle" placeholder="Название заявки">
@@ -255,7 +255,8 @@
             div.onclick = () => {
                 window.location.href = `/application_view?id=${app.id}`;
             };
-            div.innerHTML = `<b>${app.title}</b><br>Кабинет: ${app.cabinet_number} | Приоритет: ${['Низкий','Средний','Высокий'][app.id_priority-1]} | Статус: ${['Новая','В работе','Завершена'][app.id_status-1]}<br><small>Дата: ${app.date_submission}</small>`;
+            div.innerHTML = `<b style="max-width: 1054px; overflow: hidden;display: -webkit-box;
+            -webkit-box-orient: vertical; -webkit-line-clamp: 1;">${app.title}</b><br>Кабинет: ${app.cabinet_number} | Приоритет: ${['Низкий','Средний','Высокий'][app.id_priority-1]} | Статус: ${['Новая','В работе','Завершена'][app.id_status-1]}<br><small>Дата: ${app.date_submission}</small>`;
             container.appendChild(div);
         });
     }
